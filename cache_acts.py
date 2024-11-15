@@ -63,7 +63,7 @@ for step in steps:
         ## Activation
         new_cached_activations_path=f"activations/pythia-70m-layer-{hook_layer}-resid-post/{revision}/",
         act_store_device="cpu",
-        hf_repo_id=f"pythia-70m-layer-{hook_layer}-resid-post-activations",
+        hf_repo_id=f"pythia-70m-layer-pile-{hook_layer}-resid-post-activations",
         hf_revision=revision,
         ### Cache config
         store_batch_size_prompts=model_batch_size,
