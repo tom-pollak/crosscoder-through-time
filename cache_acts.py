@@ -13,7 +13,7 @@ import shutil
 device = "cuda" if t.cuda.is_available() else "mps" if t.mps.is_available() else "cpu"
 
 steps = [
-    256,
+    # 256,
     512,
     1000,
     5000,
@@ -63,10 +63,12 @@ for step in steps:
         dataset_path=dataset_path,
         is_dataset_tokenized=True,
         prepend_bos=True,
+        shuffle=False,
+        seed=42,
         ## Activation
         new_cached_activations_path=f"activations/pythia-70m-layer-{hook_layer}-resid-post/{revision}/",
         act_store_device="cpu",
-        hf_repo_id=f"pythia-70m-layer-pile-{hook_layer}-resid-post-activations",
+        hf_repo_id=f"pythia-70m-layer-{hook_layer}-pile-resid-post-activations",
         hf_revision=revision,
         ### Cache config
         store_batch_size_prompts=model_batch_size,
