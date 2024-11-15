@@ -1,7 +1,10 @@
 # %%
 import math
 import torch as t
-from sae_lens import CacheActivationsRunner, CacheActivationsRunnerConfig
+from sae_lens.cache_activations_runner import (
+    CacheActivationsRunner,
+    CacheActivationsRunnerConfig,
+)
 from sae_lens.config import DTYPE_MAP
 import shutil
 
