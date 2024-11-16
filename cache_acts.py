@@ -17,32 +17,47 @@ mp.set_start_method('spawn', force=True)
 
 def run_single_step(step, base_config, gpu_id=0):
     """Run caching for a single step with specific GPU"""
-    print(f"Starting processing for step {step} on GPU {gpu_id}")
-    config = copy.deepcopy(base_config)
+    print(f"[Process {mp.current_process().name}] Starting processing for step {step} on GPU {gpu_id}")
+    try:
+        config = copy.deepcopy(base_config)
 
-    if config['device'] == 'cuda':
-        t.cuda.set_device(gpu_id)
+        if config['device'] == 'cuda':
+            t.cuda.set_device(gpu_id)
+            print(f"[Step {step}] GPU Memory before model load: {t.cuda.memory_allocated(gpu_id) / 1e9:.2f}GB")
 
-    revision = f"step{step}"
-    new_cached_activations_path = f"{config['activation_path']}/{revision}"
+        revision = f"step{step}"
+        new_cached_activations_path = f"{config['activation_path']}/{revision}"
 
-    config.pop('activation_path')
+        config.pop('activation_path')
 
-    cfg = CacheActivationsRunnerConfig(
-        **config,
-        new_cached_activations_path=new_cached_activations_path,
-        model_from_pretrained_kwargs={"revision": revision},
-    )
-    runner = CacheActivationsRunner(cfg)
-    runner.run()
+        cfg = CacheActivationsRunnerConfig(
+            **config,
+            new_cached_activations_path=new_cached_activations_path,
+            model_from_pretrained_kwargs={"revision": revision},
+        )
 
-    del runner
-    gc.collect()
-    if config['device'] == "cuda":
-        t.cuda.empty_cache()
-    elif config['device'] == "mps":
-        t.mps.empty_cache()
-    print(f"Completed processing for step {step}")
+        if config['device'] == 'cuda':
+            print(f"[Step {step}] GPU Memory after config: {t.cuda.memory_allocated(gpu_id) / 1e9:.2f}GB")
+
+        runner = CacheActivationsRunner(cfg)
+
+        if config['device'] == 'cuda':
+            print(f"[Step {step}] GPU Memory after runner init: {t.cuda.memory_allocated(gpu_id) / 1e9:.2f}GB")
+
+        t.cuda.synchronize()
+        runner.run()
+
+        del runner
+        gc.collect()
+        if config['device'] == "cuda":
+            t.cuda.empty_cache()
+            print(f"[Step {step}] GPU Memory after cleanup: {t.cuda.memory_allocated(gpu_id) / 1e9:.2f}GB")
+        elif config['device'] == "mps":
+            t.mps.empty_cache()
+        print(f"[Process {mp.current_process().name}] Completed processing for step {step}")
+    except Exception as e:
+        print(f"[Step {step}] Error: {str(e)}")
+        raise
 
 def main():
     # Restore all the configuration from before
@@ -105,12 +120,16 @@ def main():
     n_gpus = t.cuda.device_count()
     print(f"Running {n_processes} processes across {n_gpus} GPUs")
 
+    # Create tasks list
+    tasks = [(step, base_config, i % n_gpus) for i, step in enumerate(steps)]
+
     try:
-        with mp.Pool(n_processes) as pool:
-            pool.starmap(
-                run_single_step,
-                [(step, base_config, i % n_gpus) for i, step in enumerate(steps)]
-            )
+        # Use a smaller number of concurrent processes
+        max_concurrent = min(3, n_gpus * 2)  # Start with 3 concurrent processes or 2 per GPU
+        print(f"Using max {max_concurrent} concurrent processes")
+
+        with mp.Pool(max_concurrent) as pool:
+            results = pool.starmap(run_single_step, tasks)
             print("All caching processes completed successfully")
     except Exception as e:
         print(f"Error during parallel processing: {e}")
