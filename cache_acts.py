@@ -3,6 +3,7 @@ Should take ~10 mins to run on 3 A6000s for caching (and a lot longer to push to
 
 huggingface_hub[hf_transfer]
 """
+
 # %%
 import os
 import gc
@@ -15,7 +16,6 @@ from sae_lens.cache_activations_runner import (
 from sae_lens.config import DTYPE_MAP
 from datasets import Dataset, concatenate_datasets
 import multiprocessing as mp
-from functools import partial
 import copy
 
 # %%
@@ -35,9 +35,7 @@ def run_cache(step, base_config, gpu_id=0):
             config["device"] = f"cuda:{gpu_id}"
             t.cuda.set_device(gpu_id)
         revision = f"step{step}"
-        new_cached_activations_path = f"{config['activation_path']}/{revision}"
-
-        config.pop("activation_path")
+        new_cached_activations_path = f"{config.pop('activation_path')}/{revision}"
 
         cfg = CacheActivationsRunnerConfig(
             **config,
@@ -144,7 +142,8 @@ def main():
     ds = concatenate_datasets(dss, axis=1)
     assert isinstance(ds, Dataset)
     ds.push_to_hub(
-        f"pythia-70m-layer-{hook_layer}-pile-resid-post-activations-through-time"
+        f"pythia-70m-layer-{hook_layer}-pile-resid-post-activations-through-time",
+        max_shard_size="2GB",
     )
 
 
