@@ -19,9 +19,10 @@ def run_single_step(step, base_config, gpu_id=0):
     if base_config['device'] == 'cuda':
         t.cuda.set_device(gpu_id)
     revision = f"step{step}"
+    new_cached_activations_path = f"{base_config.pop('activation_path')}/{revision}"
     cfg = CacheActivationsRunnerConfig(
         **base_config,
-        new_cached_activations_path=f"{base_config.pop('activation_path')}/{revision}",
+        new_cached_activations_path=new_cached_activations_path,
         model_from_pretrained_kwargs={"revision": revision},
     )
     runner = CacheActivationsRunner(cfg)
