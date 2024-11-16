@@ -125,7 +125,8 @@ def main():
 
     try:
         # Use a smaller number of concurrent processes
-        max_concurrent = min(3, n_gpus * 2)  # Start with 3 concurrent processes or 2 per GPU
+        # max_concurrent = min(3, n_gpus * 2)  # Start with 3 concurrent processes or 2 per GPU
+        max_concurrent = n_processes
         print(f"Using max {max_concurrent} concurrent processes")
 
         with mp.Pool(max_concurrent) as pool:
