@@ -12,6 +12,7 @@ import multiprocessing as mp
 from functools import partial
 
 # %%
+mp.set_start_method('spawn', force=True)
 
 def run_single_step(step, base_config, gpu_id=0):
     """Run caching for a single step with specific GPU"""
@@ -90,18 +91,22 @@ def main():
     }
 
     # Use one process per step
-    n_processes = len(steps)  # This will create 7 processes, one for each step
-
-    # If you have multiple GPUs, distribute across them
+    n_processes = len(steps)
     n_gpus = t.cuda.device_count()
     print(f"Running {n_processes} processes across {n_gpus} GPUs")
 
-    with mp.Pool(n_processes) as pool:
-        pool.starmap(
-            run_single_step,
-            [(step, base_config, i % n_gpus) for i, step in enumerate(steps)]
-        )
+    try:
+        with mp.Pool(n_processes) as pool:
+            pool.starmap(
+                run_single_step,
+                [(step, base_config, i % n_gpus) for i, step in enumerate(steps)]
+            )
+            print("All caching processes completed successfully")
+    except Exception as e:
+        print(f"Error during parallel processing: {e}")
+        raise
 
+    print("Starting dataset concatenation...")
     # After all processes complete, concatenate the datasets
     dss = []
     for step in steps:
