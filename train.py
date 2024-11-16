@@ -1,10 +1,16 @@
 import torch as t
 from trainer import Trainer, TrainerConfig
 from crosscoder import CrossCoderConfig
+from huggingface_hub import HfApi
 
 device = "cuda" if t.cuda.is_available() else "mps" if t.mps.is_available() else "cpu"
 
-repo_id = "tommyp111/pythia-70m-layer-4-pile-resid-post-activations-through-time"
+
+model_repo_id = "tommyp111/pythia-70m-crosscoder-through-time"  # to push to
+
+dataset_repo_id = (
+    "tommyp111/pythia-70m-layer-4-pile-resid-post-activations-through-time"
+)
 
 trainer_cfg = TrainerConfig(
     batch_size=4096,
@@ -13,7 +19,7 @@ trainer_cfg = TrainerConfig(
     beta1=0.9,
     beta2=0.999,
     l1_coeff=2,
-    repo_id=repo_id,
+    dataset_repo_id=dataset_repo_id,
     seed=49,
     wandb_project="crosscoder-time",
     wandb_entity="tompollak",
@@ -35,3 +41,8 @@ crosscoder_cfg = CrossCoderConfig(
 if __name__ == "__main__":
     trainer = Trainer(trainer_cfg, crosscoder_cfg)
     trainer.train()
+    HfApi().upload_folder(
+        folder_path=trainer.cfg.dump_dir,
+        repo_id=model_repo_id,
+        commit_message="Training finished",
+    )
