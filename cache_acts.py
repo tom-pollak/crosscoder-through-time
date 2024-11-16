@@ -25,6 +25,7 @@ def run_cache(step, base_config, gpu_id=0):
         config = copy.deepcopy(base_config)
 
         if config["device"] == "cuda":
+            config["device"] = f"cuda:{gpu_id}"
             t.cuda.set_device(gpu_id)
         revision = f"step{step}"
         new_cached_activations_path = f"{config['activation_path']}/{revision}"
