@@ -15,14 +15,11 @@ device = "cuda" if t.cuda.is_available() else "mps" if t.mps.is_available() else
 
 steps = [
     256,
-    512,
     1000,
     5000,
     10_000,
     50_000,
-    75_000,
     100_000,
-    125_000,
     143_000,
 ]
 
