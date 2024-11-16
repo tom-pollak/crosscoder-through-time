@@ -22,8 +22,7 @@ class LossOutput:
     l1_loss: t.Tensor
     l0_loss: t.Tensor
     explained_variance: t.Tensor
-    explained_variance_A: t.Tensor
-    explained_variance_B: t.Tensor
+    explained_variance_per_model: t.Tensor
 
 
 @dataclass
@@ -117,17 +116,15 @@ class CrossCoder(t.nn.Module):
         )
         explained_variance = 1 - l2_per_batch / total_variance
 
-        per_token_l2_loss_A = (
-            (x_reconstruct[:, 0, :] - x[:, 0, :]).pow(2).sum(dim=-1).squeeze()
-        )
-        total_variance_A = (x[:, 0, :] - x[:, 0, :].mean(0)).pow(2).sum(-1).squeeze()
-        explained_variance_A = 1 - per_token_l2_loss_A / total_variance_A
-
-        per_token_l2_loss_B = (
-            (x_reconstruct[:, 1, :] - x[:, 1, :]).pow(2).sum(dim=-1).squeeze()
-        )
-        total_variance_B = (x[:, 1, :] - x[:, 1, :].mean(0)).pow(2).sum(-1).squeeze()
-        explained_variance_B = 1 - per_token_l2_loss_B / total_variance_B
+        explained_variances_per_model = []
+        for i in range(self.cfg.n_models):
+            per_token_l2_loss = (
+                (x_reconstruct[:, i, :] - x[:, i, :]).pow(2).sum(dim=-1).squeeze()
+            )
+            total_variance = (x[:, i, :] - x[:, i, :].mean(0)).pow(2).sum(-1).squeeze()
+            explained_variance_model = 1 - per_token_l2_loss / total_variance
+            explained_variances_per_model.append(explained_variance_model)
+        explained_variances_per_model = t.stack(explained_variances_per_model, dim=-1)
 
         decoder_norms = self.W_dec.norm(dim=-1)
         # decoder_norms: [d_hidden, n_models]
@@ -143,8 +140,7 @@ class CrossCoder(t.nn.Module):
             l1_loss=l1_loss,
             l0_loss=l0_loss,
             explained_variance=explained_variance,
-            explained_variance_A=explained_variance_A,
-            explained_variance_B=explained_variance_B,
+            explained_variance_per_model=explained_variances_per_model,
         )
 
     def create_save_dir(self, dump_dir: str):
@@ -241,6 +237,5 @@ if __name__ == "__main__":
         dec_init_norm=0.08,
         device="cuda",
         seed=49,
-        dump_dir="./checkpoints",
     )
     print(cfg)

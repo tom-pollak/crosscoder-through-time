@@ -61,7 +61,7 @@ class Trainer:
             return self.cfg.l1_coeff
 
     def step(self):
-        acts = next(self.dl).to(self.crosscoder.device)
+        acts = next(self.dl).to(self.crosscoder.cfg.device)
         losses = self.crosscoder.get_losses(acts)
         loss = losses.l2_loss + self.get_l1_coeff() * losses.l1_loss
         loss.backward()
@@ -78,15 +78,20 @@ class Trainer:
             "l1_coeff": self.get_l1_coeff(),
             "lr": self.scheduler.get_last_lr()[0],
             "explained_variance": losses.explained_variance.mean().item(),
-            "explained_variance_A": losses.explained_variance_A.mean().item(),
-            "explained_variance_B": losses.explained_variance_B.mean().item(),
+            **{
+                f"explained_variance_{i}": losses.explained_variance_per_model[i]
+                .mean()
+                .item()
+                for i in range(losses.explained_variance_per_model.shape[0])
+            },
         }
         self.step_counter += 1
         return loss_dict
 
     def log(self, loss_dict):
         wandb.log(loss_dict, step=self.step_counter)
-        print(loss_dict)
+        if self.step_counter % self.cfg.log_every == 0:
+            print(loss_dict)
 
     def save(self):
         self.crosscoder.save(self.cfg.dump_dir)
@@ -98,8 +103,7 @@ class Trainer:
         try:
             for i in tqdm.trange(self.total_steps):
                 loss_dict = self.step()
-                if i % self.cfg.log_every == 0:
-                    self.log(loss_dict)
+                self.log(loss_dict)
                 if (i + 1) % self.cfg.save_every == 0:
                     self.save()
         finally:
