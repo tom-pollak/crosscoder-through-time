@@ -61,7 +61,7 @@ class Trainer:
             return self.cfg.l1_coeff
 
     def step(self):
-        acts = next(self.dl)
+        acts = next(self.dl).to(self.crosscoder.device)
         losses = self.crosscoder.get_losses(acts)
         loss = losses.l2_loss + self.get_l1_coeff() * losses.l1_loss
         loss.backward()
