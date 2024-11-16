@@ -65,7 +65,7 @@ class CrossCoder(t.nn.Module):
             "d_hidden n_models d_model -> n_models d_model d_hidden",
         )
         self.b_enc = t.nn.Parameter(t.zeros(d_hidden, dtype=self.dtype))
-        self.b_dec = t.nn.Parameter(t.zeros((2, d_in), dtype=self.dtype))
+        self.b_dec = t.nn.Parameter(t.zeros((cfg.n_models, d_in), dtype=self.dtype))
         self.d_hidden = d_hidden
 
         self.save_dir = None
