@@ -10,18 +10,26 @@ from sae_lens.config import DTYPE_MAP
 from datasets import Dataset, concatenate_datasets
 import multiprocessing as mp
 from functools import partial
+import copy
 
 # %%
 mp.set_start_method('spawn', force=True)
 
 def run_single_step(step, base_config, gpu_id=0):
     """Run caching for a single step with specific GPU"""
-    if base_config['device'] == 'cuda':
+    print(f"Starting processing for step {step} on GPU {gpu_id}")
+    config = copy.deepcopy(base_config)
+
+    if config['device'] == 'cuda':
         t.cuda.set_device(gpu_id)
+
     revision = f"step{step}"
-    new_cached_activations_path = f"{base_config.pop('activation_path')}/{revision}"
+    new_cached_activations_path = f"{config['activation_path']}/{revision}"
+
+    config.pop('activation_path')
+
     cfg = CacheActivationsRunnerConfig(
-        **base_config,
+        **config,
         new_cached_activations_path=new_cached_activations_path,
         model_from_pretrained_kwargs={"revision": revision},
     )
@@ -30,10 +38,11 @@ def run_single_step(step, base_config, gpu_id=0):
 
     del runner
     gc.collect()
-    if base_config['device'] == "cuda":
+    if config['device'] == "cuda":
         t.cuda.empty_cache()
-    elif base_config['device'] == "mps":
+    elif config['device'] == "mps":
         t.mps.empty_cache()
+    print(f"Completed processing for step {step}")
 
 def main():
     # Restore all the configuration from before
