@@ -73,7 +73,7 @@ def main():
     model_name = "EleutherAI/pythia-70m"
     hook_layer = 4
     dataset_path = "NeelNanda/pile-small-tokenized-2b"
-    activation_path = f"activations/pythia-70m-layer-{hook_layer}-resid-post/"
+    activation_path = f"activations/pythia-70m-layer-{hook_layer}-pile-resid-post-activations-through-time/"
 
     training_tokens = 10_000_000
     model_batch_size = 256
@@ -141,8 +141,9 @@ def main():
 
     ds = concatenate_datasets(dss, axis=1)
     assert isinstance(ds, Dataset)
+
     ds.push_to_hub(
-        f"pythia-70m-layer-{hook_layer}-pile-resid-post-activations-through-time",
+        f"tommyp111/pythia-70m-layer-{hook_layer}-pile-resid-post-activations-through-time",
         max_shard_size="2GB",
     )
 
