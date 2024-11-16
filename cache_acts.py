@@ -1,4 +1,10 @@
+"""
+Should take ~10 mins to run on 3 A6000s for caching (and a lot longer to push to hub)
+
+huggingface_hub[hf_transfer]
+"""
 # %%
+import os
 import gc
 import math
 import torch as t
@@ -13,6 +19,7 @@ from functools import partial
 import copy
 
 # %%
+os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 mp.set_start_method("spawn", force=True)
 
 
@@ -61,13 +68,15 @@ def main():
     device = (
         "cuda" if t.cuda.is_available() else "mps" if t.mps.is_available() else "cpu"
     )
+    max_concurrent_per_gpu = 2
+    n_gpus = t.cuda.device_count()
+    max_concurrent = n_gpus * max_concurrent_per_gpu
 
     model_name = "EleutherAI/pythia-70m"
     hook_layer = 4
     dataset_path = "NeelNanda/pile-small-tokenized-2b"
     activation_path = f"activations/pythia-70m-layer-{hook_layer}-resid-post/"
 
-    # Model and data config
     training_tokens = 10_000_000
     model_batch_size = 256
     n_batches_in_buffer = 28
@@ -93,7 +102,6 @@ def main():
         143_000,
     ]
 
-    # Base configuration dictionary
     base_config = {
         "model_name": model_name,
         "hook_name": f"blocks.{hook_layer}.hook_resid_post",
@@ -113,16 +121,11 @@ def main():
         "n_batches_in_buffer": n_batches_in_buffer,
     }
 
-    n_processes = len(steps)
-    n_gpus = t.cuda.device_count()
-    print(f"Running {n_processes} processes across {n_gpus} GPUs")
-
     tasks = [(step, base_config, i % n_gpus) for i, step in enumerate(steps)]
+    print(f"Running {len(tasks)} processes across {n_gpus} GPUs")
 
     try:
-        max_concurrent = n_gpus * 2
         print(f"Using max {max_concurrent} concurrent processes")
-
         with mp.Pool(max_concurrent) as pool:
             pool.starmap(run_cache, tasks)
             print("All caching processes completed successfully")
@@ -139,6 +142,7 @@ def main():
         dss.append(_ds)
 
     ds = concatenate_datasets(dss, axis=1)
+    assert isinstance(ds, Dataset)
     ds.push_to_hub(
         f"pythia-70m-layer-{hook_layer}-pile-resid-post-activations-through-time"
     )
