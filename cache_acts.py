@@ -21,7 +21,7 @@ def run_single_step(step, base_config, gpu_id=0):
     revision = f"step{step}"
     cfg = CacheActivationsRunnerConfig(
         **base_config,
-        new_cached_activations_path=f"{base_config['activation_path']}/{revision}",
+        new_cached_activations_path=f"{base_config.pop('activation_path')}/{revision}",
         model_from_pretrained_kwargs={"revision": revision},
     )
     runner = CacheActivationsRunner(cfg)
