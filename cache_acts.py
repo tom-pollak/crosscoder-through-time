@@ -68,8 +68,8 @@ def main():
 
     # Model and data config
     training_tokens = 10_000_000
-    model_batch_size = 32
-    n_batches_in_buffer = 224
+    model_batch_size = 256
+    n_batches_in_buffer = 28
     d_in = 512
     context_size = 128
     dtype = "float32"
