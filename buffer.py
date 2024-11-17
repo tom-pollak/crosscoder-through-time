@@ -2,7 +2,7 @@
 from typing import Iterator
 from jaxtyping import Float
 import torch as t
-from datasets import IterableDataset, load_dataset
+from datasets import Dataset, load_dataset
 
 
 class MultiFeatureBuffer:
@@ -21,8 +21,11 @@ class MultiFeatureBuffer:
 
         All features must have the same model dimension (and sequence length).
         """
-        self.ds = load_dataset(repo_id, split="train", streaming=True, **dataset_kwargs)
-        assert isinstance(self.ds, IterableDataset)
+        self.ds = load_dataset(
+            repo_id, split="train", streaming=False, **dataset_kwargs
+        )
+        # assert isinstance(self.ds, IterableDataset)
+        assert isinstance(self.ds, Dataset)
         self.ds = self.ds.with_format(type="torch")
         if columns is not None:
             self.ds = self.ds.select_columns(columns)
