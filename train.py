@@ -10,16 +10,24 @@ model_repo_id = "tommyp111/pythia-70m-crosscoder-through-time"  # to push to
 dataset_repo_id = (
     "tommyp111/pythia-70m-layer-4-pile-resid-post-activations-through-time"
 )
+local_data_dir = (
+    "/home/jl_fs/datasets/pythia-70m-layer-4-pile-resid-post-activations-through-time"
+)
 
 trainer_cfg = TrainerConfig(
+    # Training
     batch_size=4096,
     num_tokens=10_000_000,
     lr=5e-5,
     beta1=0.9,
     beta2=0.999,
     l1_coeff=2,
+    # Dataset
     dataset_repo_id=dataset_repo_id,
+    dataset_kwargs={"data_dir": local_data_dir},
+    shuffle=True,
     seed=49,
+    # Logging
     wandb_project="crosscoder-time",
     wandb_entity="tompollak",
     log_every=100,

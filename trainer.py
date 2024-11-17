@@ -19,7 +19,9 @@ class TrainerConfig:
     l1_coeff: float
     # Dataset
     dataset_repo_id: str
+    shuffle: bool
     seed: int
+    dataset_kwargs: dict
     # Logging
     wandb_project: str
     wandb_entity: str
@@ -32,7 +34,9 @@ class Trainer:
     def __init__(self, trainer_cfg: TrainerConfig, crosscoder_cfg: CrossCoderConfig):
         self.cfg = trainer_cfg
         self.crosscoder = CrossCoder(crosscoder_cfg).to(crosscoder_cfg.device)
-        self.buffer = MultiFeatureBuffer(self.cfg.dataset_repo_id, seed=self.cfg.seed)
+        self.buffer = MultiFeatureBuffer(
+            self.cfg.dataset_repo_id, **self.cfg.dataset_kwargs
+        )
         self.dl = self.buffer.iter(batch_size=self.cfg.batch_size)
 
         self.total_steps = self.cfg.num_tokens // self.cfg.batch_size
