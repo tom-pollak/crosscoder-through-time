@@ -21,7 +21,7 @@ class MultiFeatureBuffer:
 
         All features must have the same model dimension (and sequence length).
         """
-        self.ds = load_dataset(repo_id, split="train", **dataset_kwargs)
+        self.ds = load_dataset(repo_id, split="train", streaming=True, **dataset_kwargs)
         assert isinstance(self.ds, IterableDataset)
         self.ds = self.ds.with_format(type="torch")
         if columns is not None:
