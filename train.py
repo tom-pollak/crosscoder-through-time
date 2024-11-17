@@ -1,10 +1,10 @@
 import os
+os.environ["HF_HOME"] = "/home/jl_fs/.cache/huggingface"
+
 import torch as t
 from trainer import Trainer, TrainerConfig
 from crosscoder import CrossCoderConfig
 from huggingface_hub import HfApi
-
-os.environ["HF_HOME"] = "/home/jl_fs/.cache/huggingface"
 
 device = "cuda" if t.cuda.is_available() else "mps" if t.mps.is_available() else "cpu"
 
