@@ -10,7 +10,9 @@ model_repo_id = "tommyp111/pythia-70m-crosscoder-through-time"  # to push to
 # dataset_repo_id = (
 #     "tommyp111/pythia-70m-layer-4-pile-resid-post-activations-through-time"
 # )
-local_data_dir = "/home/jl_fs/datasets/pythia-70m-layer-4-pile-resid-post-activations-through-time/data"
+local_data_dir = (
+    "/home/jl_fs/datasets/pythia-70m-layer-4-pile-resid-post-activations-through-time"
+)
 
 trainer_cfg = TrainerConfig(
     # Training
