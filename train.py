@@ -7,12 +7,10 @@ device = "cuda" if t.cuda.is_available() else "mps" if t.mps.is_available() else
 
 model_repo_id = "tommyp111/pythia-70m-crosscoder-through-time"  # to push to
 
-dataset_repo_id = (
-    "tommyp111/pythia-70m-layer-4-pile-resid-post-activations-through-time"
-)
-local_data_dir = (
-    "/home/jl_fs/datasets/pythia-70m-layer-4-pile-resid-post-activations-through-time/data"
-)
+# dataset_repo_id = (
+#     "tommyp111/pythia-70m-layer-4-pile-resid-post-activations-through-time"
+# )
+local_data_dir = "/home/jl_fs/datasets/pythia-70m-layer-4-pile-resid-post-activations-through-time/data"
 
 trainer_cfg = TrainerConfig(
     # Training
@@ -23,8 +21,8 @@ trainer_cfg = TrainerConfig(
     beta2=0.999,
     l1_coeff=2,
     # Dataset
-    dataset_repo_id=dataset_repo_id,
-    dataset_kwargs={"data_dir": local_data_dir},
+    dataset_repo_id=local_data_dir,
+    dataset_kwargs={},  # {"data_dir": local_data_dir},
     shuffle=True,
     seed=49,
     # Logging
