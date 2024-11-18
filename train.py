@@ -17,7 +17,7 @@ dataset_repo_id = (
 
 trainer_cfg = TrainerConfig(
     # Training
-    batch_size=4096,
+    batch_size=512, # 4096
     num_tokens=10_000_000,
     lr=5e-5,
     beta1=0.9,
