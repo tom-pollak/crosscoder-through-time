@@ -1,6 +1,6 @@
 import os
 
-os.environ["HF_HOME"] = "/home/jl_fs/.cache/huggingface"
+os.environ["HF_HOME"] = "/home/jl_fs/"
 
 import torch as t
 from trainer import Trainer, TrainerConfig
