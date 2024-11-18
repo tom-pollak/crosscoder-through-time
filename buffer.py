@@ -24,9 +24,8 @@ class MultiFeatureBuffer:
         self.ds = load_dataset(
             repo_id, split="train", streaming=False, **dataset_kwargs
         )
-        # assert isinstance(self.ds, IterableDataset)
         assert isinstance(self.ds, Dataset)
-        self.ds = self.ds.with_format(type="torch")
+        self.ds = self.ds.to_iterable_dataset().with_format("torch")
         if columns is not None:
             self.ds = self.ds.select_columns(columns)
         if shuffle:
