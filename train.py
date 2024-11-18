@@ -1,4 +1,5 @@
 import os
+
 os.environ["HF_HOME"] = "/home/jl_fs/.cache/huggingface"
 
 import torch as t
@@ -10,11 +11,8 @@ device = "cuda" if t.cuda.is_available() else "mps" if t.mps.is_available() else
 
 model_repo_id = "tommyp111/pythia-70m-crosscoder-through-time"  # to push to
 
-# dataset_repo_id = (
-#     "tommyp111/pythia-70m-layer-4-pile-resid-post-activations-through-time"
-# )
-local_data_dir = (
-    "/home/jl_fs/datasets/pythia-70m-layer-4-pile-resid-post-activations-through-time"
+dataset_repo_id = (
+    "tommyp111/pythia-70m-layer-4-pile-resid-post-activations-through-time"
 )
 
 trainer_cfg = TrainerConfig(
@@ -26,7 +24,7 @@ trainer_cfg = TrainerConfig(
     beta2=0.999,
     l1_coeff=2,
     # Dataset
-    dataset_repo_id=local_data_dir,
+    dataset_repo_id=dataset_repo_id,
     dataset_kwargs={},  # {"data_dir": local_data_dir},
     shuffle=True,
     seed=49,
