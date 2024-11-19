@@ -2,7 +2,7 @@
 from typing import Iterator
 from jaxtyping import Float
 import torch as t
-from datasets import Dataset, load_dataset
+from datasets import Dataset, load_dataset, IterableDataset
 
 
 class MultiFeatureBuffer:
