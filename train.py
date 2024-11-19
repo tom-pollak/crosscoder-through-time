@@ -23,8 +23,8 @@ trainer_cfg = TrainerConfig(
     # Logging
     wandb_project="crosscoder-time",
     wandb_entity="tompollak",
-    log_every=1_000,
-    save_every=10_000,
+    log_every=100,
+    save_every=1_000,
     dump_dir="./checkpoints",
 )
 
