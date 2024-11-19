@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Optional, Union
 from dataclasses import dataclass, asdict
+from jaxtyping import Float
 
 from sae_lens.config import DTYPE_MAP
 
@@ -71,8 +72,9 @@ class CrossCoder(t.nn.Module):
         self.save_dir = None
         self.save_version = 0
 
-    def encode(self, x, apply_relu=True):
-        # x: [batch, n_models, d_model]
+    def encode(
+        self, x: Float[t.Tensor, "batch n_models d_model"], apply_relu: bool = True
+    ):
         x_enc = einops.einsum(
             x,
             self.W_enc,
@@ -124,7 +126,7 @@ class CrossCoder(t.nn.Module):
             total_variance = (x[:, i, :] - x[:, i, :].mean(0)).pow(2).sum(-1).squeeze()
             explained_variance_model = 1 - per_token_l2_loss / total_variance
             explained_variances_per_model.append(explained_variance_model)
-        explained_variances_per_model = t.stack(explained_variances_per_model, dim=-1)
+        explained_variances_per_model = t.stack(explained_variances_per_model)
 
         decoder_norms = self.W_dec.norm(dim=-1)
         # decoder_norms: [d_hidden, n_models]

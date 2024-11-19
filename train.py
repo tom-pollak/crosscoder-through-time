@@ -1,7 +1,3 @@
-import os
-
-os.environ["HF_HOME"] = "/home/jl_fs/"
-
 import torch as t
 from trainer import Trainer, TrainerConfig
 from crosscoder import CrossCoderConfig
@@ -17,7 +13,7 @@ dataset_repo_id = (
 
 trainer_cfg = TrainerConfig(
     # Training
-    batch_size=512, # 4096
+    batch_size=512,  # 4096
     num_tokens=10_000_000,
     lr=5e-5,
     beta1=0.9,
@@ -25,9 +21,6 @@ trainer_cfg = TrainerConfig(
     l1_coeff=2,
     # Dataset
     dataset_repo_id=dataset_repo_id,
-    dataset_kwargs={},  # {"data_dir": local_data_dir},
-    shuffle=True,
-    seed=49,
     # Logging
     wandb_project="crosscoder-time",
     wandb_entity="tompollak",

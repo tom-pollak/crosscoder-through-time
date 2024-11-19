@@ -1,4 +1,5 @@
 import json
+import warnings
 from crosscoder import CrossCoder, CrossCoderConfig
 from buffer import MultiFeatureBuffer
 import tqdm
@@ -19,9 +20,6 @@ class TrainerConfig:
     l1_coeff: float
     # Dataset
     dataset_repo_id: str
-    shuffle: bool
-    seed: int
-    dataset_kwargs: dict
     # Logging
     wandb_project: str
     wandb_entity: str
@@ -34,12 +32,15 @@ class Trainer:
     def __init__(self, trainer_cfg: TrainerConfig, crosscoder_cfg: CrossCoderConfig):
         self.cfg = trainer_cfg
         self.crosscoder = CrossCoder(crosscoder_cfg).to(crosscoder_cfg.device)
-        self.buffer = MultiFeatureBuffer(
-            self.cfg.dataset_repo_id, **self.cfg.dataset_kwargs
-        )
-        self.dl = self.buffer.iter(batch_size=self.cfg.batch_size)
+        self.buffer = MultiFeatureBuffer(self.cfg.dataset_repo_id)
+        self.dl = self.buffer.dl(batch_size=self.cfg.batch_size)
 
         self.total_steps = self.cfg.num_tokens // self.cfg.batch_size
+        if len(self.dl) < self.total_steps:
+            warnings.warn(
+                f"Dataset is too small for {self.total_steps} steps, got {len(self.dl)} steps"
+            )
+            self.total_steps = len(self.dl)
 
         self.optimizer = t.optim.Adam(
             self.crosscoder.parameters(),
@@ -64,9 +65,9 @@ class Trainer:
         else:
             return self.cfg.l1_coeff
 
-    def step(self):
-        acts = next(self.dl).to(self.crosscoder.cfg.device)
-        losses = self.crosscoder.get_losses(acts)
+    def step(self, batch):
+        batch = batch.to(self.crosscoder.cfg.device)
+        losses = self.crosscoder.get_losses(batch)
         loss = losses.l2_loss + self.get_l1_coeff() * losses.l1_loss
         loss.backward()
         t.nn.utils.clip_grad_norm_(self.crosscoder.parameters(), max_norm=1.0)
@@ -105,8 +106,8 @@ class Trainer:
     def train(self):
         self.step_counter = 0
         try:
-            for i in tqdm.trange(self.total_steps):
-                loss_dict = self.step()
+            for i, batch in enumerate(tqdm.tqdm(self.dl)):
+                loss_dict = self.step(batch)
                 self.log(loss_dict)
                 if (i + 1) % self.cfg.save_every == 0:
                     self.save()
