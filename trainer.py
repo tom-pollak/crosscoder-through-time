@@ -1,8 +1,7 @@
 import json
-import warnings
 from crosscoder import CrossCoder, CrossCoderConfig
 from buffer import MultiFeatureBuffer
-import tqdm
+from tqdm import tqdm
 import torch as t
 import wandb
 from dataclasses import asdict, dataclass
@@ -12,7 +11,6 @@ from dataclasses import asdict, dataclass
 class TrainerConfig:
     # Training
     batch_size: int
-    num_tokens: int
     # Optimizer
     lr: float
     beta1: float
@@ -34,14 +32,7 @@ class Trainer:
         self.crosscoder = CrossCoder(crosscoder_cfg).to(crosscoder_cfg.device)
         self.buffer = MultiFeatureBuffer(self.cfg.dataset_repo_id)
         self.dl = self.buffer.dl(batch_size=self.cfg.batch_size)
-
-        self.total_steps = self.cfg.num_tokens // self.cfg.batch_size
-        if len(self.dl) < self.total_steps:
-            warnings.warn(
-                f"Dataset is too small for {self.total_steps} steps, got {len(self.dl)} steps"
-            )
-            self.total_steps = len(self.dl)
-
+        self.total_steps = len(self.dl)
         self.optimizer = t.optim.Adam(
             self.crosscoder.parameters(),
             lr=self.cfg.lr,
@@ -96,7 +87,7 @@ class Trainer:
     def log(self, loss_dict):
         wandb.log(loss_dict, step=self.step_counter)
         if self.step_counter % self.cfg.log_every == 0:
-            print(loss_dict)
+            tqdm.write(str(loss_dict))
 
     def save(self):
         self.crosscoder.save(self.cfg.dump_dir)
@@ -106,7 +97,7 @@ class Trainer:
     def train(self):
         self.step_counter = 0
         try:
-            for i, batch in enumerate(tqdm.tqdm(self.dl)):
+            for i, batch in enumerate(tqdm(self.dl)):
                 loss_dict = self.step(batch)
                 self.log(loss_dict)
                 if (i + 1) % self.cfg.save_every == 0:

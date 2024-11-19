@@ -13,8 +13,7 @@ dataset_repo_id = (
 
 trainer_cfg = TrainerConfig(
     # Training
-    batch_size=512,  # 4096
-    num_tokens=10_000_000,
+    batch_size=4096,
     lr=5e-5,
     beta1=0.9,
     beta2=0.999,
@@ -24,8 +23,8 @@ trainer_cfg = TrainerConfig(
     # Logging
     wandb_project="crosscoder-time",
     wandb_entity="tompollak",
-    log_every=100,
-    save_every=500,
+    log_every=1_000,
+    save_every=10_000,
     dump_dir="./checkpoints",
 )
 
