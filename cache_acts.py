@@ -4,7 +4,6 @@ Should take ~10 mins to run on 3 A6000s for caching (and a lot longer to push to
 huggingface_hub[hf_transfer]
 """
 
-# %%
 import os
 import gc
 import math
@@ -18,7 +17,6 @@ from datasets import Dataset, concatenate_datasets
 import multiprocessing as mp
 import copy
 
-# %%
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 mp.set_start_method("spawn", force=True)
 
@@ -66,7 +64,7 @@ def main():
     device = (
         "cuda" if t.cuda.is_available() else "mps" if t.mps.is_available() else "cpu"
     )
-    max_concurrent_per_gpu = 2
+    max_concurrent_per_gpu = 1
     n_gpus = t.cuda.device_count()
     max_concurrent = n_gpus * max_concurrent_per_gpu
 
@@ -75,11 +73,11 @@ def main():
     dataset_path = "NeelNanda/pile-small-tokenized-2b"
     activation_path = f"activations/pythia-70m-layer-{hook_layer}-pile-resid-post-activations-through-time/"
 
-    training_tokens = 10_000_000
-    model_batch_size = 256
-    n_batches_in_buffer = 28
+    training_tokens = 100_000_000
+    model_batch_size = 512
+    n_batches_in_buffer = 14
     d_in = 512
-    context_size = 128
+    context_size = 1024
     dtype = "float32"
 
     # Calculate memory requirements
@@ -107,6 +105,7 @@ def main():
         "context_size": context_size,
         "d_in": d_in,
         "device": str(device),
+        "autocast_lm": True,
         "dataset_path": dataset_path,
         "is_dataset_tokenized": True,
         "prepend_bos": False,

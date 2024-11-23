@@ -71,10 +71,11 @@ class CrossCoder(t.nn.Module):
 
         self.save_dir = None
         self.save_version = 0
+        self.to(cfg.device)
 
     def encode(
         self, x: Float[t.Tensor, "batch n_models d_model"], apply_relu: bool = True
-    ):
+    ) -> Float[t.Tensor, "batch d_hidden"]:
         x_enc = einops.einsum(
             x,
             self.W_enc,
@@ -86,8 +87,9 @@ class CrossCoder(t.nn.Module):
             acts = x_enc + self.b_enc
         return acts
 
-    def decode(self, acts):
-        # acts: [batch, d_hidden]
+    def decode(
+        self, acts: Float[t.Tensor, "batch d_hidden"]
+    ) -> Float[t.Tensor, "batch n_models d_model"]:
         acts_dec = einops.einsum(
             acts,
             self.W_dec,
@@ -95,16 +97,15 @@ class CrossCoder(t.nn.Module):
         )
         return acts_dec + self.b_dec
 
-    def forward(self, x):
-        # x: [batch, n_models, d_model]
+    def forward(
+        self, x: Float[t.Tensor, "batch n_models d_model"]
+    ) -> Float[t.Tensor, "batch n_models d_model"]:
         acts = self.encode(x)
         return self.decode(acts)
 
-    def get_losses(self, x):
-        # x: [batch, n_models, d_model]
-        x = x.to(self.dtype)
-        acts = self.encode(x)
-        # acts: [batch, d_hidden]
+    def get_losses(self, x: Float[t.Tensor, "batch n_models d_model"]) -> LossOutput:
+        x = x.to(self.device).to(self.dtype)
+        acts = self.encode(x)  # (batch, d_hidden)
         x_reconstruct = self.decode(acts)
         diff = x_reconstruct.float() - x.float()
         squared_diff = diff.pow(2)
@@ -228,6 +229,10 @@ class CrossCoder(t.nn.Module):
         self = cls(cfg=cfg)
         self.load_state_dict(t.load(weight_path, map_location="cpu"))
         return self
+
+    @property
+    def device(self):
+        return self.cfg.device
 
 
 if __name__ == "__main__":

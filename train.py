@@ -41,7 +41,11 @@ crosscoder_cfg = CrossCoderConfig(
 if __name__ == "__main__":
     trainer = Trainer(trainer_cfg, crosscoder_cfg)
     trainer.train()
-    HfApi().upload_folder(
+
+    # Push to hub
+    api = HfApi()
+    api.create_repo(repo_id=model_repo_id, exist_ok=True)
+    api.upload_folder(
         folder_path=trainer.cfg.dump_dir,
         repo_id=model_repo_id,
         commit_message="Training finished",

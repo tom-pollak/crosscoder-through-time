@@ -29,19 +29,8 @@ class TrainerConfig:
 class Trainer:
     def __init__(self, trainer_cfg: TrainerConfig, crosscoder_cfg: CrossCoderConfig):
         self.cfg = trainer_cfg
-        self.crosscoder = CrossCoder(crosscoder_cfg).to(crosscoder_cfg.device)
+        self.crosscoder = CrossCoder(crosscoder_cfg)
         self.buffer = MultiFeatureBuffer(self.cfg.dataset_repo_id)
-        self.dl = self.buffer.dl(batch_size=self.cfg.batch_size)
-        self.total_steps = len(self.dl)
-        self.optimizer = t.optim.Adam(
-            self.crosscoder.parameters(),
-            lr=self.cfg.lr,
-            betas=(self.cfg.beta1, self.cfg.beta2),
-        )
-        self.scheduler = t.optim.lr_scheduler.LambdaLR(self.optimizer, self.lr_lambda)
-        self.step_counter = 0
-
-        wandb.init(project=self.cfg.wandb_project, entity=self.cfg.wandb_entity)
 
     def lr_lambda(self, step):
         if step < 0.8 * self.total_steps:
@@ -57,7 +46,6 @@ class Trainer:
             return self.cfg.l1_coeff
 
     def step(self, batch):
-        batch = batch.to(self.crosscoder.cfg.device)
         losses = self.crosscoder.get_losses(batch)
         loss = losses.l2_loss + self.get_l1_coeff() * losses.l1_loss
         loss.backward()
@@ -95,6 +83,15 @@ class Trainer:
             json.dump(asdict(self.cfg), f)
 
     def train(self):
+        wandb.init(project=self.cfg.wandb_project, entity=self.cfg.wandb_entity)
+        self.dl = self.buffer.dl(batch_size=self.cfg.batch_size)
+        self.total_steps = len(self.dl)
+        self.optimizer = t.optim.Adam(
+            self.crosscoder.parameters(),
+            lr=self.cfg.lr,
+            betas=(self.cfg.beta1, self.cfg.beta2),
+        )
+        self.scheduler = t.optim.lr_scheduler.LambdaLR(self.optimizer, self.lr_lambda)
         self.step_counter = 0
         try:
             for i, batch in enumerate(tqdm(self.dl)):
