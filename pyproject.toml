@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "circuitsvis>=1.41.0",
     "einops>=0.8.0",
-    "huggingface-hub>=0.26.2",
+    "huggingface-hub[hf-transfer]>=0.26.2",
     "ipykernel>=6.29.5",
     "jaxtyping>=0.2.34",
     "matplotlib>=3.9.2",

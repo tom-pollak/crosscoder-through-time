@@ -74,8 +74,8 @@ def main():
     activation_path = f"activations/pythia-70m-layer-{hook_layer}-pile-resid-post-activations-through-time/"
 
     training_tokens = 100_000_000
-    model_batch_size = 512
-    n_batches_in_buffer = 14
+    model_batch_size = 128
+    n_batches_in_buffer = 6
     d_in = 512
     context_size = 1024
     dtype = "float32"

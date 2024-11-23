@@ -1,6 +1,9 @@
 import json
+from transformer_lens import HookedTransformer
+from jaxtyping import Float
 from crosscoder import CrossCoder, CrossCoderConfig
-from buffer import MultiFeatureBuffer
+# from buffer import MultiFeatureBuffer, BufferConfig
+from buffer_on_the_fly import Buffer, BufferConfig
 from tqdm import tqdm
 import torch as t
 import wandb
@@ -27,10 +30,11 @@ class TrainerConfig:
 
 
 class Trainer:
-    def __init__(self, trainer_cfg: TrainerConfig, crosscoder_cfg: CrossCoderConfig):
+    def __init__(self, trainer_cfg: TrainerConfig, crosscoder_cfg: CrossCoderConfig, buffer_cfg: BufferConfig, models: list[HookedTransformer], all_tokens: Float[t.Tensor, "batch seq_len"]):
         self.cfg = trainer_cfg
         self.crosscoder = CrossCoder(crosscoder_cfg)
-        self.buffer = MultiFeatureBuffer(self.cfg.dataset_repo_id)
+        # self.buffer = MultiFeatureBuffer(self.cfg.dataset_repo_id)
+        self.buffer = Buffer(buffer_cfg, models, all_tokens)
 
     def lr_lambda(self, step):
         if step < 0.8 * self.total_steps:
