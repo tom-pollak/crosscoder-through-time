@@ -28,7 +28,7 @@ trainer_cfg = TrainerConfig(
     wandb_project="crosscoder-time",
     wandb_entity="tompollak",
     log_every=100,
-    save_every=1_000,
+    save_every=25_000,
     dump_dir="./checkpoints",
 )
 
@@ -45,7 +45,7 @@ crosscoder_cfg = CrossCoderConfig(
 buffer_cfg = BufferConfig(
     sae_batch_size=4096,
     model_batch_size=128,
-    buffer_mult=256,
+    buffer_mult=511,  # gives a nice even number after stripping BOS
     seq_len=1024,
     hook_point="blocks.4.hook_resid_post",
     hook_layer=4,
@@ -91,13 +91,17 @@ tokens_dl = t.utils.data.DataLoader(
 
 if __name__ == "__main__":
     trainer = Trainer(trainer_cfg, crosscoder_cfg, buffer_cfg, models, tokens_dl)
+    # trainer = Trainer.load(Path("./checkpoints"), version=0, step=25_000)
     trainer.train()
+
+    final_model_checkpoint_dir = trainer.root_save_dir / "model_checkpoint_final"
+    trainer.crosscoder.save(final_model_checkpoint_dir)
 
     # Push to hub
     api = HfApi()
     api.create_repo(repo_id=model_repo_id, exist_ok=True)
     api.upload_folder(
-        folder_path=trainer.cfg.dump_dir,
+        folder_path=final_model_checkpoint_dir,
         repo_id=model_repo_id,
         commit_message="Training finished",
     )

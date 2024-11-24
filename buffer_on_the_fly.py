@@ -1,3 +1,7 @@
+import json
+from dataclasses import asdict
+from pathlib import Path
+from typing import Any
 import numpy as np
 import einops
 import torch as t
@@ -27,44 +31,58 @@ class Buffer:
     def __init__(
         self,
         cfg: BufferConfig,
-        models: list[HookedTransformer],
+        models: dict[Any, HookedTransformer],
         tokens_dl: t.utils.data.DataLoader,
     ):
         self.cfg = cfg
+        # 1023 * 4096 / (1024 - 1) = 4096
+        # X * 4.003910068426
         num_sequences_needed = math.floor(
             cfg.buffer_mult * cfg.sae_batch_size / (cfg.seq_len - 1)
         )
         self.buffer_size = num_sequences_needed * (cfg.seq_len - 1)
+        # 4100 / 128 = 32.03
         self.refresh_batches = math.ceil(num_sequences_needed / cfg.model_batch_size)
+        self.total_batches = (len(tokens_dl) // self.refresh_batches) * cfg.buffer_mult
 
         print("=== Buffer Config ===")
         print(f"Buffer size: {self.buffer_size}")
         print(f"Refresh batches: {self.refresh_batches}")
+        print(f"Total batches: {self.total_batches}")
         print()
 
+        self._models_dict = models
         self.buffer = t.zeros(
-            (self.buffer_size, len(models), models[0].cfg.d_model),
+            (self.buffer_size, len(self.models), self.models[0].cfg.d_model),
             dtype=t.bfloat16,
             requires_grad=False,
             device="cpu",
         )
-        self.models = models
         self.pointer = 0
         self.normalize = True
         self.tokens_dl = tokens_dl
         self.dl_iter = iter(self.tokens_dl)
 
+        # self.normalisation_factor = t.tensor(
+        #     [
+        #         self.estimate_norm_scaling_factor(model)
+        #         for model in tqdm.tqdm(models, leave=False)
+        #     ],
+        #     device=self.buffer.device,
+        #     dtype=self.buffer.dtype,
+        # )
+        # print(f"Normalisation factor:\n{self.normalisation_factor}")
         self.normalisation_factor = t.tensor(
-            [
-                self.estimate_norm_scaling_factor(model)
-                for model in tqdm.tqdm(models, leave=False)
-            ],
-            device=cfg.device,
-            dtype=t.float32,
+            [1.6593, 0.7984, 0.6371, 0.6009, 1.0066, 1.4880],
+            device=self.buffer.device,
+            dtype=self.buffer.dtype,
         )
-        print(f"Normalisation factor:\n{self.normalisation_factor}")
 
         self.refresh()
+
+    @property
+    def models(self):
+        return list(self._models_dict.values())
 
     @t.no_grad()
     def estimate_norm_scaling_factor(
@@ -146,3 +164,31 @@ class Buffer:
 
         self.pointer = end
         return out
+
+    def save(self, save_dir: Path):
+        """Save buffer configuration and state to disk"""
+        with open(f"{save_dir}/buffer_cfg.json", "w") as f:
+            json.dump(asdict(self.cfg), f)
+        state = {
+            "pointer": self.pointer,
+            "buffer": self.buffer,
+            "normalize": self.normalize,
+            "normalisation_factor": self.normalisation_factor
+            if hasattr(self, "normalisation_factor")
+            else None,
+            "models": self._models_dict,
+            "tokens_dl": self.tokens_dl,
+        }
+        t.save(state, f"{save_dir}/buffer_state.pt")
+
+    @classmethod
+    def load(cls, save_dir: Path):
+        """Load buffer configuration and state from disk"""
+        with open(f"{save_dir}/buffer_cfg.json", "r") as f:
+            cfg = BufferConfig(**json.load(f))
+        print(f"BufferConfig:\n{cfg}")
+        state = t.load(f"{save_dir}/buffer_state.pt")
+        buffer = cls(cfg, state["models"], state["tokens_dl"])
+        buffer.__dict__.update(state)
+        buffer.dl_iter = iter(buffer.tokens_dl)
+        return buffer

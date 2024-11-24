@@ -70,7 +70,6 @@ class CrossCoder(t.nn.Module):
         self.d_hidden = d_hidden
 
         self.save_dir = None
-        self.save_version = 0
         self.to(cfg.device)
 
     def encode(
@@ -146,88 +145,21 @@ class CrossCoder(t.nn.Module):
             explained_variance_per_model=explained_variances_per_model,
         )
 
-    def create_save_dir(self, dump_dir: str):
-        base_dir = Path(dump_dir)
-        base_dir.mkdir(parents=True, exist_ok=True)
-        version_list = [
-            int(file.name.split("_")[1])
-            for file in list(base_dir.iterdir())
-            if "version" in str(file)
-        ]
-        if len(version_list):
-            version = 1 + max(version_list)
-        else:
-            version = 0
-        self.save_dir = base_dir / f"version_{version}"
-        self.save_dir.mkdir(parents=True)
-
-    def save(self, dump_dir: str):
-        if self.save_dir is None:
-            self.create_save_dir(dump_dir)
-        assert self.save_dir is not None
-        weight_path = self.save_dir / f"{self.save_version}.pt"
-        cfg_path = self.save_dir / f"{self.save_version}_cfg.json"
-
+    def save(self, save_dir: Path):
+        weight_path = save_dir / "cc_weights.pt"
+        cfg_path = save_dir / "cc_cfg.json"
         t.save(self.state_dict(), weight_path)
         with open(cfg_path, "w") as f:
             json.dump(asdict(self.cfg), f)
 
-        print(f"Saved as version {self.save_version} in {self.save_dir}")
-        self.save_version += 1
-
     @classmethod
-    def load_from_hf(
-        cls,
-        repo_id: str = "ckkissane/crosscoder-gemma-2-2b-model-diff",
-        path: str = "blocks.14.hook_resid_pre",
-        device: Optional[Union[str, t.device]] = None,
-    ) -> CrossCoder:
-        """
-        Load CrossCoder weights and config from HuggingFace.
-
-        Args:
-            repo_id: HuggingFace repository ID
-            path: Path within the repo to the weights/config
-            model: The transformer model instance needed for initialization
-            device: Device to load the model to (defaults to cfg device if not specified)
-
-        Returns:
-            Initialized CrossCoder instance
-        """
-
-        # Download config and weights
-        config_path = hf_hub_download(repo_id=repo_id, filename=f"{path}/cfg.json")
-        weights_path = hf_hub_download(
-            repo_id=repo_id, filename=f"{path}/cc_weights.pt"
-        )
-
-        # Load config
-        with open(config_path, "r") as f:
+    def load(cls, save_dir: Path):
+        with open(f"{save_dir}/cc_cfg.json", "r") as f:
             cfg = CrossCoderConfig(**json.load(f))
 
-        # Override device if specified
-        if device is not None:
-            cfg.device = str(device)
-
-        # Initialize CrossCoder with config
-        instance = cls(cfg)
-
-        # Load weights
-        state_dict = t.load(weights_path, map_location="cpu")
-        instance.load_state_dict(state_dict)
-
-        return instance
-
-    @classmethod
-    def load(cls, dump_dir, version_dir, checkpoint_version):
-        save_dir = Path(dump_dir) / str(version_dir)
-        cfg_path = save_dir / f"{str(checkpoint_version)}_cfg.json"
-        weight_path = save_dir / f"{str(checkpoint_version)}.pt"
-
-        cfg = json.load(open(cfg_path, "r"))
-        print(json.dumps(cfg, indent=4))
+        print(f"CrossCoderConfig:\n{cfg}")
         self = cls(cfg=cfg)
-        self.load_state_dict(t.load(weight_path, map_location="cpu"))
+        self.load_state_dict(t.load(save_dir / "cc_weights.pt", map_location="cpu"))
         return self
 
     @property
