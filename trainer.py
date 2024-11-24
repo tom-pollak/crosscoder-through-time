@@ -6,7 +6,7 @@ from transformer_lens import HookedTransformer
 from jaxtyping import Float
 from crosscoder import CrossCoder, CrossCoderConfig
 
-# from buffer import MultiFeatureBuffer, BufferConfig
+from buffer import MultiFeatureBuffer, MultiFeatureBufferConfig
 from buffer_on_the_fly import Buffer, BufferConfig
 from tqdm import tqdm, trange
 import torch as t
@@ -23,8 +23,8 @@ class TrainerConfig:
     beta1: float
     beta2: float
     l1_coeff: float
-    # Dataset
-    dataset_repo_id: str
+    warmup_steps: int | None
+    warmup_pct: float | None
     # Logging
     wandb_project: str
     wandb_entity: str
@@ -32,22 +32,25 @@ class TrainerConfig:
     save_every: int
     dump_dir: str
 
+    def __post_init__(self):
+        assert self.warmup_pct is None or self.warmup_steps is None
+
 
 class Trainer:
     def __init__(
         self,
         trainer_cfg: TrainerConfig,
         crosscoder_cfg: CrossCoderConfig,
-        buffer_cfg: BufferConfig,
-        models: dict[Any, HookedTransformer],
-        tokens_dl: t.utils.data.DataLoader,
+        buffer_cfg: BufferConfig | MultiFeatureBufferConfig,
     ):
         self.cfg = trainer_cfg
         self.crosscoder = CrossCoder(crosscoder_cfg)
-        self.buffer = Buffer(buffer_cfg, models, tokens_dl)
-        self.total_steps = self.buffer.total_batches
-        # self.buffer = MultiFeatureBuffer(self.cfg.dataset_repo_id)
-        self.models = models
+        self.buffer = (
+            MultiFeatureBuffer(buffer_cfg)
+            if isinstance(buffer_cfg, MultiFeatureBufferConfig)
+            else Buffer(buffer_cfg)
+        )
+        self.total_steps = len(self.buffer)
         self.version = self.create_version()
 
         self.root_save_dir = Path(self.cfg.dump_dir) / f"version_{self.version}"
@@ -61,8 +64,13 @@ class Trainer:
 
     def get_l1_coeff(self):
         # Linearly increases from 0 to cfg["l1_coeff"] over the first 0.05 * self.total_steps steps, then keeps it constant
-        if self.step_counter < 0.05 * self.total_steps:
-            return self.cfg.l1_coeff * self.step_counter / (0.05 * self.total_steps)
+        if self.cfg.warmup_steps is None:
+            warmup_steps = self.cfg.warmup_pct * self.total_steps
+        else:
+            warmup_steps = self.cfg.warmup_steps
+
+        if self.step_counter < warmup_steps:
+            return self.cfg.l1_coeff * self.step_counter / (warmup_steps)
         else:
             return self.cfg.l1_coeff
 
@@ -87,7 +95,7 @@ class Trainer:
                 f"explained_variance_{nm}": losses.explained_variance_per_model[i]
                 .mean()
                 .item()
-                for i, nm in enumerate(self.models.keys())
+                for i, nm in enumerate(self.buffer.model_names())
             },
         }
         self.step_counter += 1
@@ -115,47 +123,47 @@ class Trainer:
         else:
             return 0
 
-    @property
-    def save_dir(self) -> Path:
-        return self.root_save_dir / f"checkpoint_{self.step_counter}"
+    # @property
+    # def save_dir(self) -> Path:
+    #     return self.root_save_dir / f"checkpoint_{self.step_counter}"
 
-    def save(self):
-        self.save_dir.mkdir(parents=True, exist_ok=False)
-        print("Saving CrossCoder")
-        self.crosscoder.save(self.save_dir)
-        print("Saving Buffer")
-        self.buffer.save(self.save_dir)
-        print("Saving Trainer")
-        with open(f"{self.save_dir}/trainer_cfg.json", "w") as f:
-            json.dump(asdict(self.cfg), f)
-        state = {
-            "step_counter": self.step_counter,
-            "optimizer_state": self.optimizer.state_dict(),
-            "scheduler_state": self.scheduler.state_dict(),
-        }
-        t.save(state, f"{self.save_dir}/trainer_state.pt")
+    # def save(self):
+    #     self.save_dir.mkdir(parents=True, exist_ok=False)
+    #     print("Saving CrossCoder")
+    #     self.crosscoder.save(self.save_dir)
+    #     print("Saving Buffer")
+    #     self.buffer.save(self.save_dir)
+    #     print("Saving Trainer")
+    #     with open(f"{self.save_dir}/trainer_cfg.json", "w") as f:
+    #         json.dump(asdict(self.cfg), f)
+    #     state = {
+    #         "step_counter": self.step_counter,
+    #         "optimizer_state": self.optimizer.state_dict(),
+    #         "scheduler_state": self.scheduler.state_dict(),
+    #     }
+    #     t.save(state, f"{self.save_dir}/trainer_state.pt")
 
-    @classmethod
-    def load(cls, dump_dir: Path, version: int, step: int):
-        save_dir = dump_dir / f"version_{version}" / f"checkpoint_{step}"
-        crosscoder = CrossCoder.load(save_dir)
-        buffer = Buffer.load(save_dir)
-        trainer_cfg = TrainerConfig(**json.load(open(f"{save_dir}/trainer_cfg.json")))
-        print(f"TrainerConfig:\n{trainer_cfg}")
-        trainer = cls(
-            trainer_cfg,
-            crosscoder.cfg,
-            buffer.cfg,
-            buffer._models_dict,
-            buffer.tokens_dl,
-        )
-        trainer.crosscoder = crosscoder
-        trainer.buffer = buffer
-        trainer.step_counter = step
-        trainer.optimizer.load_state_dict(t.load(f"{save_dir}/optimizer_state.pt"))
-        trainer.scheduler.load_state_dict(t.load(f"{save_dir}/scheduler_state.pt"))
-        gc.collect()
-        return trainer
+    # @classmethod
+    # def load(cls, dump_dir: Path, version: int, step: int):
+    #     save_dir = dump_dir / f"version_{version}" / f"checkpoint_{step}"
+    #     crosscoder = CrossCoder.load(save_dir)
+    #     buffer = Buffer.load(save_dir)
+    #     trainer_cfg = TrainerConfig(**json.load(open(f"{save_dir}/trainer_cfg.json")))
+    #     print(f"TrainerConfig:\n{trainer_cfg}")
+    #     trainer = cls(
+    #         trainer_cfg,
+    #         crosscoder.cfg,
+    #         buffer.cfg,
+    #         buffer._models_dict,
+    #         buffer.tokens_dl,
+    #     )
+    #     trainer.crosscoder = crosscoder
+    #     trainer.buffer = buffer
+    #     trainer.step_counter = step
+    #     trainer.optimizer.load_state_dict(t.load(f"{save_dir}/optimizer_state.pt"))
+    #     trainer.scheduler.load_state_dict(t.load(f"{save_dir}/scheduler_state.pt"))
+    #     gc.collect()
+    #     return trainer
 
     def train(self):
         wandb.init(project=self.cfg.wandb_project, entity=self.cfg.wandb_entity)
@@ -171,11 +179,12 @@ class Trainer:
                 batch = self.buffer.next()
                 loss_dict = self.step(batch)
                 self.log(loss_dict)
-                if (i + 1) % self.cfg.save_every == 0:
-                    self.save()
+                # if (i + 1) % self.cfg.save_every == 0:
+                #     self.save()
         except KeyboardInterrupt:
             print("Keyboard interrupt, saving checkpoint...")
         except Exception as e:
             print(f"Error: {e}")
         finally:
-            self.save()
+            pass
+            # self.save()

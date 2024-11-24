@@ -14,6 +14,8 @@ import math
 
 @dataclass
 class BufferConfig:
+    token_dataset_repo_id: str
+    models: dict[Any, HookedTransformer]
     buffer_mult: int
     model_batch_size: int
     sae_batch_size: int
@@ -32,8 +34,24 @@ class Buffer:
         self,
         cfg: BufferConfig,
         models: dict[Any, HookedTransformer],
-        tokens_dl: t.utils.data.DataLoader,
     ):
+        ds = load_dataset(cfg.token_dataset_repo_id, split="train")
+        assert isinstance(ds, Dataset)
+        ds = ds.with_format("torch")
+
+        self.tokens_dl = t.utils.data.DataLoader(
+            ds,  # type: ignore
+            batch_size=cfg.model_batch_size,
+            shuffle=True,
+            num_workers=10,
+            prefetch_factor=10,
+            pin_memory=True,
+            # persistent_workers=True,
+            drop_last=True,
+        )
+        self._iter = iter(self.tokens_dl)
+
+
         self.cfg = cfg
         # 1023 * 4096 / (1024 - 1) = 4096
         # X * 4.003910068426
@@ -43,7 +61,7 @@ class Buffer:
         self.buffer_size = num_sequences_needed * (cfg.seq_len - 1)
         # 4100 / 128 = 32.03
         self.refresh_batches = math.ceil(num_sequences_needed / cfg.model_batch_size)
-        self.total_batches = (len(tokens_dl) // self.refresh_batches) * cfg.buffer_mult
+        self.total_batches = (len(self.tokens_dl) // self.refresh_batches) * cfg.buffer_mult
 
         print("=== Buffer Config ===")
         print(f"Buffer size: {self.buffer_size}")
@@ -60,8 +78,6 @@ class Buffer:
         )
         self.pointer = 0
         self.normalize = True
-        self.tokens_dl = tokens_dl
-        self.dl_iter = iter(self.tokens_dl)
 
         # self.normalisation_factor = t.tensor(
         #     [
@@ -120,7 +136,7 @@ class Buffer:
                 tqdm.trange(
                     self.refresh_batches, desc="Refreshing buffer", leave=False
                 ),
-                self.dl_iter,
+                self._iter,
             ):
                 tokens = batch["tokens"].to(self.cfg.device)
                 acts = []
@@ -165,30 +181,8 @@ class Buffer:
         self.pointer = end
         return out
 
-    def save(self, save_dir: Path):
-        """Save buffer configuration and state to disk"""
-        with open(f"{save_dir}/buffer_cfg.json", "w") as f:
-            json.dump(asdict(self.cfg), f)
-        state = {
-            "pointer": self.pointer,
-            "buffer": self.buffer,
-            "normalize": self.normalize,
-            "normalisation_factor": self.normalisation_factor
-            if hasattr(self, "normalisation_factor")
-            else None,
-            "models": self._models_dict,
-            "tokens_dl": self.tokens_dl,
-        }
-        t.save(state, f"{save_dir}/buffer_state.pt")
+    def __len__(self):
+        return self.total_batches
 
-    @classmethod
-    def load(cls, save_dir: Path):
-        """Load buffer configuration and state from disk"""
-        with open(f"{save_dir}/buffer_cfg.json", "r") as f:
-            cfg = BufferConfig(**json.load(f))
-        print(f"BufferConfig:\n{cfg}")
-        state = t.load(f"{save_dir}/buffer_state.pt")
-        buffer = cls(cfg, state["models"], state["tokens_dl"])
-        buffer.__dict__.update(state)
-        buffer.dl_iter = iter(buffer.tokens_dl)
-        return buffer
+    def model_names(self):
+        return list(self._models_dict.keys())
