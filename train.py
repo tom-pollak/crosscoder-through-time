@@ -21,8 +21,8 @@ trainer_cfg = TrainerConfig(
     beta1=0.9,
     beta2=0.999,
     l1_coeff=1.25,
-    warmup_steps=5000,
-    warmup_pct=None,
+    warmup_steps=None,
+    warmup_pct=0.05,
     # Logging
     wandb_project="crosscoder-time",
     wandb_entity="tompollak",
