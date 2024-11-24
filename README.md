@@ -1,6 +1,6 @@
 # CrossCoder Through Time
 
-> Repo aims to train a CrossCoder model across multiple checkpoints of a 70M Pythia model, and see how it evolves over training.
+> Repo aims to train a [CrossCoder](https://transformer-circuits.pub/2024/crosscoders/index.html) model across multiple checkpoints of a 70M Pythia model, and see how it evolves over training.
 
 - Adapted from [crosscoder-model-diff-replication](https://github.com/ckkissane/crosscoder-model-diff-replication)
 

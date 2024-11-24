@@ -130,22 +130,5 @@ def main():
         print(f"Error during parallel processing: {e}")
         raise
 
-    print("Starting dataset concatenation...")
-    dss = []
-    for step in steps:
-        revision = f"step{step}"
-        _ds = Dataset.load_from_disk(f"{activation_path}/{revision}")
-        _ds = _ds.rename_column("blocks.4.hook_resid_post", str(step))
-        dss.append(_ds)
-
-    ds = concatenate_datasets(dss, axis=1)
-    assert isinstance(ds, Dataset)
-
-    ds.push_to_hub(
-        f"tommyp111/pythia-70m-layer-{hook_layer}-pile-resid-post-activations-through-time",
-        max_shard_size="2GB",
-    )
-
-
 if __name__ == "__main__":
     main()
