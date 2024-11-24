@@ -1,10 +1,12 @@
 import json
+from typing import Any
 from transformer_lens import HookedTransformer
 from jaxtyping import Float
 from crosscoder import CrossCoder, CrossCoderConfig
+
 # from buffer import MultiFeatureBuffer, BufferConfig
 from buffer_on_the_fly import Buffer, BufferConfig
-from tqdm import tqdm
+from tqdm import tqdm, trange
 import torch as t
 import wandb
 from dataclasses import asdict, dataclass
@@ -30,11 +32,20 @@ class TrainerConfig:
 
 
 class Trainer:
-    def __init__(self, trainer_cfg: TrainerConfig, crosscoder_cfg: CrossCoderConfig, buffer_cfg: BufferConfig, models: list[HookedTransformer], all_tokens: Float[t.Tensor, "batch seq_len"]):
+    def __init__(
+        self,
+        trainer_cfg: TrainerConfig,
+        crosscoder_cfg: CrossCoderConfig,
+        buffer_cfg: BufferConfig,
+        models: dict[Any, HookedTransformer],
+        tokens_dl: t.utils.data.DataLoader,
+    ):
         self.cfg = trainer_cfg
         self.crosscoder = CrossCoder(crosscoder_cfg)
+        self.total_steps = len(tokens_dl)
         # self.buffer = MultiFeatureBuffer(self.cfg.dataset_repo_id)
-        self.buffer = Buffer(buffer_cfg, models, all_tokens)
+        self.buffer = Buffer(buffer_cfg, list(models.values()), tokens_dl)
+        self.models = models
 
     def lr_lambda(self, step):
         if step < 0.8 * self.total_steps:
@@ -67,10 +78,10 @@ class Trainer:
             "lr": self.scheduler.get_last_lr()[0],
             "explained_variance": losses.explained_variance.mean().item(),
             **{
-                f"explained_variance_{i}": losses.explained_variance_per_model[i]
+                f"explained_variance_{nm}": losses.explained_variance_per_model[i]
                 .mean()
                 .item()
-                for i in range(losses.explained_variance_per_model.shape[0])
+                for i, nm in enumerate(self.models.keys())
             },
         }
         self.step_counter += 1
@@ -78,8 +89,7 @@ class Trainer:
 
     def log(self, loss_dict):
         wandb.log(loss_dict, step=self.step_counter)
-        if self.step_counter % self.cfg.log_every == 0:
-            tqdm.write(str(loss_dict))
+        tqdm.write(str(loss_dict))
 
     def save(self):
         self.crosscoder.save(self.cfg.dump_dir)
@@ -88,8 +98,6 @@ class Trainer:
 
     def train(self):
         wandb.init(project=self.cfg.wandb_project, entity=self.cfg.wandb_entity)
-        self.dl = self.buffer.dl(batch_size=self.cfg.batch_size)
-        self.total_steps = len(self.dl)
         self.optimizer = t.optim.Adam(
             self.crosscoder.parameters(),
             lr=self.cfg.lr,
@@ -98,9 +106,11 @@ class Trainer:
         self.scheduler = t.optim.lr_scheduler.LambdaLR(self.optimizer, self.lr_lambda)
         self.step_counter = 0
         try:
-            for i, batch in enumerate(tqdm(self.dl)):
+            for i in trange(self.total_steps, desc="Training"):
+                batch = self.buffer.next()
                 loss_dict = self.step(batch)
-                self.log(loss_dict)
+                if (i + 1) % self.cfg.log_every == 0:
+                    self.log(loss_dict)
                 if (i + 1) % self.cfg.save_every == 0:
                     self.save()
         finally:
