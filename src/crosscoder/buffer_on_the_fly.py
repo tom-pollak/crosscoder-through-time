@@ -1,6 +1,4 @@
-import json
-from dataclasses import asdict
-from pathlib import Path
+from datasets import Dataset, load_dataset
 from typing import Any
 import numpy as np
 import einops
@@ -33,7 +31,6 @@ class Buffer:
     def __init__(
         self,
         cfg: BufferConfig,
-        models: dict[Any, HookedTransformer],
     ):
         ds = load_dataset(cfg.token_dataset_repo_id, split="train")
         assert isinstance(ds, Dataset)
@@ -51,7 +48,6 @@ class Buffer:
         )
         self._iter = iter(self.tokens_dl)
 
-
         self.cfg = cfg
         # 1023 * 4096 / (1024 - 1) = 4096
         # X * 4.003910068426
@@ -61,7 +57,9 @@ class Buffer:
         self.buffer_size = num_sequences_needed * (cfg.seq_len - 1)
         # 4100 / 128 = 32.03
         self.refresh_batches = math.ceil(num_sequences_needed / cfg.model_batch_size)
-        self.total_batches = (len(self.tokens_dl) // self.refresh_batches) * cfg.buffer_mult
+        self.total_batches = (
+            len(self.tokens_dl) // self.refresh_batches
+        ) * cfg.buffer_mult
 
         print("=== Buffer Config ===")
         print(f"Buffer size: {self.buffer_size}")
@@ -69,7 +67,6 @@ class Buffer:
         print(f"Total batches: {self.total_batches}")
         print()
 
-        self._models_dict = models
         self.buffer = t.zeros(
             (self.buffer_size, len(self.models), self.models[0].cfg.d_model),
             dtype=t.bfloat16,
@@ -98,7 +95,7 @@ class Buffer:
 
     @property
     def models(self):
-        return list(self._models_dict.values())
+        return list(self.cfg.models.values())
 
     @t.no_grad()
     def estimate_norm_scaling_factor(
@@ -185,4 +182,4 @@ class Buffer:
         return self.total_batches
 
     def model_names(self):
-        return list(self._models_dict.keys())
+        return list(self.cfg.models.keys())

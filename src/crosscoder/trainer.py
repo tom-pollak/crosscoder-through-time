@@ -1,17 +1,12 @@
-import gc
-import json
 from pathlib import Path
-from typing import Any
-from transformer_lens import HookedTransformer
-from jaxtyping import Float
-from crosscoder import CrossCoder, CrossCoderConfig
-
-from buffer import MultiFeatureBuffer, MultiFeatureBufferConfig
-from buffer_on_the_fly import Buffer, BufferConfig
 from tqdm import tqdm, trange
 import torch as t
 import wandb
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
+
+from crosscoder.model import CrossCoder, CrossCoderConfig
+from crosscoder.buffer import MultiFeatureBuffer, MultiFeatureBufferConfig
+from crosscoder.buffer_on_the_fly import Buffer, BufferConfig
 
 
 @dataclass
@@ -50,6 +45,7 @@ class Trainer:
             if isinstance(buffer_cfg, MultiFeatureBufferConfig)
             else Buffer(buffer_cfg)
         )
+        self.step_counter = 0
         self.total_steps = len(self.buffer)
         self.version = self.create_version()
 
@@ -64,10 +60,12 @@ class Trainer:
 
     def get_l1_coeff(self):
         # Linearly increases from 0 to cfg["l1_coeff"] over the first 0.05 * self.total_steps steps, then keeps it constant
-        if self.cfg.warmup_steps is None:
-            warmup_steps = self.cfg.warmup_pct * self.total_steps
-        else:
-            warmup_steps = self.cfg.warmup_steps
+        warmup_steps = (
+            self.cfg.warmup_pct * self.total_steps
+            if self.cfg.warmup_pct is not None
+            else self.cfg.warmup_steps
+        )
+        assert warmup_steps is not None
 
         if self.step_counter < warmup_steps:
             return self.cfg.l1_coeff * self.step_counter / (warmup_steps)

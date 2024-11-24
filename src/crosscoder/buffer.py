@@ -4,7 +4,6 @@ from pathlib import Path
 import einops
 from jaxtyping import Float
 import torch as t
-from typing import Iterator
 from datasets import Dataset, concatenate_datasets
 
 
@@ -13,7 +12,7 @@ class MultiFeatureBufferConfig:
     activations_path: Path | str  # type: ignore
     hook_name: str
     batch_size: int
-    normalization_factor: Float[t.Tensor, "n_models"] | None
+    normalization_factor: Float[t.Tensor, "n_models"] | None = None
     seed: int = 42
 
     def __post_init__(self):
@@ -94,7 +93,7 @@ class MultiFeatureBuffer:
             batch = next(self._iter)
             if self.cfg.normalization_factor is not None:
                 batch *= self.cfg.normalization_factor[None, :, None]
-                return batch
+            return batch
 
         except StopIteration:
             warnings.warn("Dataloader exhausted, resetting iterator")

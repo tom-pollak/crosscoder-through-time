@@ -1,20 +1,16 @@
 import torch as t
-from datasets import Dataset, load_dataset
-from sae_lens.load_model import load_model
-from buffer_on_the_fly import BufferConfig
-from buffer import MultiFeatureBufferConfig
 from transformer_lens import HookedTransformer
-from trainer import Trainer, TrainerConfig
-from crosscoder import CrossCoderConfig
+from sae_lens.load_model import load_model
 from huggingface_hub import HfApi
+
+from crosscoder.buffer_on_the_fly import BufferConfig
+from crosscoder.buffer import MultiFeatureBufferConfig
+from crosscoder.trainer import Trainer, TrainerConfig
+from crosscoder.model import CrossCoderConfig
 
 device = "cuda" if t.cuda.is_available() else "mps" if t.mps.is_available() else "cpu"
 
 model_repo_id = "tommyp111/pythia-70m-crosscoder-through-time"  # to push to
-
-dataset_repo_id = (
-    "tommyp111/pythia-70m-layer-4-pile-resid-post-activations-through-time"
-)
 
 trainer_cfg = TrainerConfig(
     # Training
@@ -84,8 +80,6 @@ buffer_cfg = MultiFeatureBufferConfig(
         dtype=t.float32,
     ),
 )
-
-
 
 
 if __name__ == "__main__":
