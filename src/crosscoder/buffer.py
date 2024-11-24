@@ -8,7 +8,7 @@ from datasets import Dataset, concatenate_datasets
 
 
 @dataclass
-class MultiFeatureBufferConfig:
+class CachedBufferConfig:
     activations_path: Path | str  # type: ignore
     hook_name: str
     batch_size: int
@@ -21,10 +21,10 @@ class MultiFeatureBufferConfig:
         self.activations_path: Path
 
 
-class MultiFeatureBuffer:
+class CachedBuffer:
     def __init__(
         self,
-        cfg: MultiFeatureBufferConfig,
+        cfg: CachedBufferConfig,
     ):
         """
         Buffer for a dataset with multiple features from the same input sequence.
@@ -108,12 +108,12 @@ class MultiFeatureBuffer:
 
 
 if __name__ == "__main__":
-    cfg = MultiFeatureBufferConfig(
+    cfg = CachedBufferConfig(
         activations_path="./activations/pythia-70m-layer-4-pile-resid-post-activations-through-time",
         hook_name="blocks.4.hook_resid_post",
         batch_size=4096,
     )
-    buffer = MultiFeatureBuffer(cfg)
+    buffer = CachedBuffer(cfg)
     for i in range(10):
         batch = buffer.next()
         print(batch.shape)

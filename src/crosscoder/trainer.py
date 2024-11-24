@@ -5,8 +5,8 @@ import wandb
 from dataclasses import dataclass
 
 from crosscoder.model import CrossCoder, CrossCoderConfig
-from crosscoder.buffer import MultiFeatureBuffer, MultiFeatureBufferConfig
-from crosscoder.buffer_on_the_fly import Buffer, BufferConfig
+from crosscoder.buffer import CachedBuffer, CachedBufferConfig
+from crosscoder.buffer_on_the_fly import FlyBuffer, FlyBufferConfig
 
 
 @dataclass
@@ -36,14 +36,14 @@ class Trainer:
         self,
         trainer_cfg: TrainerConfig,
         crosscoder_cfg: CrossCoderConfig,
-        buffer_cfg: BufferConfig | MultiFeatureBufferConfig,
+        buffer_cfg: FlyBufferConfig | CachedBufferConfig,
     ):
         self.cfg = trainer_cfg
         self.crosscoder = CrossCoder(crosscoder_cfg)
         self.buffer = (
-            MultiFeatureBuffer(buffer_cfg)
-            if isinstance(buffer_cfg, MultiFeatureBufferConfig)
-            else Buffer(buffer_cfg)
+            CachedBuffer(buffer_cfg)
+            if isinstance(buffer_cfg, CachedBufferConfig)
+            else FlyBuffer(buffer_cfg)
         )
         self.step_counter = 0
         self.total_steps = len(self.buffer)

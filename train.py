@@ -3,8 +3,8 @@ from transformer_lens import HookedTransformer
 from sae_lens.load_model import load_model
 from huggingface_hub import HfApi
 
-from crosscoder.buffer_on_the_fly import BufferConfig
-from crosscoder.buffer import MultiFeatureBufferConfig
+from crosscoder.buffer_on_the_fly import FlyBufferConfig
+from crosscoder.buffer import CachedBufferConfig
 from crosscoder.trainer import Trainer, TrainerConfig
 from crosscoder.model import CrossCoderConfig
 
@@ -69,7 +69,7 @@ crosscoder_cfg = CrossCoderConfig(
 #     device=str(device),
 # )
 
-buffer_cfg = MultiFeatureBufferConfig(
+buffer_cfg = CachedBufferConfig(
     activations_path="./activations/pythia-70m-layer-4-pile-resid-post-activations-through-time",
     hook_name="blocks.4.hook_resid_post",
     batch_size=4096,

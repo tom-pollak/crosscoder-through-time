@@ -11,7 +11,7 @@ import math
 
 
 @dataclass
-class BufferConfig:
+class FlyBufferConfig:
     token_dataset_repo_id: str
     models: dict[Any, HookedTransformer]
     buffer_mult: int
@@ -23,14 +23,14 @@ class BufferConfig:
     device: str
 
 
-class Buffer:
+class FlyBuffer:
     """
     This defines a data buffer, to store a stack of acts across both model that can be used to train the autoencoder. It'll automatically run the model to generate more when it gets halfway empty.
     """
 
     def __init__(
         self,
-        cfg: BufferConfig,
+        cfg: FlyBufferConfig,
     ):
         ds = load_dataset(cfg.token_dataset_repo_id, split="train")
         assert isinstance(ds, Dataset)
