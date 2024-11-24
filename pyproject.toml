@@ -5,14 +5,19 @@ description = ""
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "circuitsvis>=1.41.0",
-    "einops>=0.8.0",
-    "huggingface-hub[hf-transfer]>=0.26.2",
-    "ipykernel>=6.29.5",
-    "jaxtyping>=0.2.34",
-    "matplotlib>=3.9.2",
-    "sae-lens>=4.4.0",
     "torch>=2.5.1",
-    "transformer-lens>=1.19.0",
+    "einops>=0.8.0",
+    "jaxtyping>=0.2.34",
+    "numpy>=1.26.4",
+    "matplotlib>=3.9.2",
+    "plotly>=5.24.1",
     "transformers>=4.46.2",
+    "datasets>=2.21.0",
+    "huggingface-hub[hf-transfer]>=0.26.2",
+    "transformer-lens>=1.19.0",
+    "sae-lens>=4.4.0",
+    "circuitsvis>=1.41.0",
 ]
+
+[tool.uv]
+dev-dependencies = ["ipykernel>=6.29.5"]

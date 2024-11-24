@@ -402,30 +402,42 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "circuitsvis" },
+    { name = "datasets" },
     { name = "einops" },
     { name = "huggingface-hub", extra = ["hf-transfer"] },
-    { name = "ipykernel" },
     { name = "jaxtyping" },
     { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "plotly" },
     { name = "sae-lens" },
     { name = "torch" },
     { name = "transformer-lens" },
     { name = "transformers" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "ipykernel" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "circuitsvis", specifier = ">=1.41.0" },
+    { name = "datasets", specifier = ">=2.21.0" },
     { name = "einops", specifier = ">=0.8.0" },
     { name = "huggingface-hub", extras = ["hf-transfer"], specifier = ">=0.26.2" },
-    { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "jaxtyping", specifier = ">=0.2.34" },
     { name = "matplotlib", specifier = ">=3.9.2" },
+    { name = "numpy", specifier = ">=1.26.4" },
+    { name = "plotly", specifier = ">=5.24.1" },
     { name = "sae-lens", specifier = ">=4.4.0" },
     { name = "torch", specifier = ">=2.5.1" },
     { name = "transformer-lens", specifier = ">=1.19.0" },
     { name = "transformers", specifier = ">=4.46.2" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "ipykernel", specifier = ">=6.29.5" }]
 
 [[package]]
 name = "cycler"
