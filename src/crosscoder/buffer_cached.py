@@ -12,6 +12,7 @@ class CachedBufferConfig:
     activations_path: Path | str  # type: ignore
     hook_name: str
     batch_size: int
+    model_names: list[str]
     normalization_factor: Float[t.Tensor, "n_models"] | None = None
     seed: int = 42
 
@@ -39,6 +40,7 @@ class CachedBuffer:
             [
                 Dataset.load_from_disk(p).rename_column(cfg.hook_name, p.stem)
                 for p in cfg.activations_path.glob("step*")
+                if p.stem in cfg.model_names
             ],
             axis=1,
         )
@@ -112,6 +114,7 @@ if __name__ == "__main__":
         activations_path="./activations/pythia-70m-layer-4-pile-resid-post-activations-through-time",
         hook_name="blocks.4.hook_resid_post",
         batch_size=4096,
+        model_names=["step100000", "step500000" "step100000", "step143000"],
     )
     buffer = CachedBuffer(cfg)
     for i in range(10):

@@ -4,13 +4,15 @@ from sae_lens.load_model import load_model
 from huggingface_hub import HfApi
 
 from crosscoder.buffer_on_the_fly import FlyBufferConfig
-from crosscoder.buffer import CachedBufferConfig
-from crosscoder.trainer import Trainer, TrainerConfig
+from crosscoder.buffer_cached import CachedBufferConfig
 from crosscoder.model import CrossCoderConfig
+from crosscoder.trainer import Trainer, TrainerConfig
 
 device = "cuda" if t.cuda.is_available() else "mps" if t.mps.is_available() else "cpu"
 
 model_repo_id = "tommyp111/pythia-70m-crosscoder-through-time"  # to push to
+
+steps = [100000, 143000]
 
 trainer_cfg = TrainerConfig(
     # Training
@@ -31,22 +33,15 @@ trainer_cfg = TrainerConfig(
 
 crosscoder_cfg = CrossCoderConfig(
     d_in=512,
-    dict_size=2**14,
-    n_models=4,
+    dict_size=2**14,  # 32K
+    n_models=len(steps),
     enc_dtype="float32",
     dec_init_norm=0.08,
     device=str(device),
     seed=49,
 )
 
-# steps = [
-#     1000,
-#     5000,
-#     10_000,
-#     50_000,
-#     100_000,
-#     143_000,
-# ]
+
 # models: dict[int, HookedTransformer] = {  # type: ignore
 #     step: t.compile(
 #         load_model(
@@ -73,9 +68,11 @@ buffer_cfg = CachedBufferConfig(
     activations_path="./activations/pythia-70m-layer-4-pile-resid-post-activations-through-time",
     hook_name="blocks.4.hook_resid_post",
     batch_size=4096,
+    model_names=[f"step{step}" for step in steps],
     seed=49,
     normalization_factor=t.tensor(
-        [0.6371, 0.6009, 1.0066, 1.4880],
+        [1.0066, 1.4880],
+        # [0.6371, 0.6009, 1.0066, 1.4880],
         device="cpu",
         dtype=t.float32,
     ),

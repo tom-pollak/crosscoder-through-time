@@ -5,7 +5,7 @@ import wandb
 from dataclasses import dataclass
 
 from crosscoder.model import CrossCoder, CrossCoderConfig
-from crosscoder.buffer import CachedBuffer, CachedBufferConfig
+from crosscoder.buffer_cached import CachedBuffer, CachedBufferConfig
 from crosscoder.buffer_on_the_fly import FlyBuffer, FlyBufferConfig
 
 
