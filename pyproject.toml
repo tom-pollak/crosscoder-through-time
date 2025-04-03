@@ -5,6 +5,14 @@ description = ""
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "circuitsvis>=1.41.0",
+    "einops>=0.8.0",
+    "ezmup",
+    "huggingface-hub>=0.26.2",
+    "ipykernel>=6.29.5",
+    "jaxtyping>=0.2.34",
+    "matplotlib>=3.9.2",
+    "sae-lens>=0.5.0",
     "torch>=2.5.1",
     "einops>=0.8.0",
     "jaxtyping>=0.2.34",
@@ -21,3 +29,10 @@ dependencies = [
 
 [tool.uv]
 dev-dependencies = ["ipykernel>=6.29.5"]
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+]
+
+[tool.uv.sources]
+ezmup = { git = "https://github.com/cloneofsimo/ezmup.git" }
